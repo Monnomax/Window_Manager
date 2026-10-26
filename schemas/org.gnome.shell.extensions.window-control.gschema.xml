@@ -14,5 +14,9 @@
             <default>true</default>
             <summary>Restore window sizes</summary>
         </key>
+        <key name="excluded-apps" type="as">
+            <default>[]</default>
+            <summary>Applications excluded from window state tracking</summary>
+        </key>
     </schema>
 </schemalist>

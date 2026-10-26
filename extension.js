@@ -23,6 +23,10 @@ export default class WindowControlExtension extends Extension {
         this._windowStates = this._loadWindowStates();
         this._trackedWindows = new Map();
         this._windowTracker = Shell.WindowTracker.get_default();
+        this._excludedAppsChangedId = this._settings.connect(
+            "changed::excluded-apps",
+            () => this._syncExcludedWindows(),
+        );
 
         // Mutter emits window-created before the first frame is drawn.
         // Connect before the default handler so we can suppress the initial frame.
@@ -41,6 +45,10 @@ export default class WindowControlExtension extends Extension {
         if (this._windowCreatedId) {
             global.display.disconnect(this._windowCreatedId);
             this._windowCreatedId = 0;
+        }
+        if (this._excludedAppsChangedId) {
+            this._settings.disconnect(this._excludedAppsChangedId);
+            this._excludedAppsChangedId = 0;
         }
 
         for (const [window, tracking] of this._trackedWindows) {
@@ -72,7 +80,8 @@ export default class WindowControlExtension extends Extension {
 
     _trackWindow(window, isNew = false) {
         if (this._trackedWindows.has(window) ||
-            !WINDOW_TYPES.has(window.get_window_type()))
+            !WINDOW_TYPES.has(window.get_window_type()) ||
+            this._isExcluded(window))
             return;
 
         const actor = isNew ? window.get_compositor_private() : null;
@@ -326,8 +335,25 @@ export default class WindowControlExtension extends Extension {
         ]);
     }
 
+    _isExcluded(window) {
+        const appId = this._windowTracker.get_window_app(window)?.get_id();
+        return appId !== undefined &&
+            this._settings.get_strv("excluded-apps").includes(appId);
+    }
+
+    _syncExcludedWindows() {
+        for (const [window, tracking] of this._trackedWindows) {
+            if (this._isExcluded(window))
+                this._untrackWindow(window, tracking);
+        }
+
+        for (const actor of global.get_window_actors())
+            this._trackWindow(actor.meta_window, false);
+    }
+
     _restoreWindow(window) {
-        if (window.is_fullscreen() || window.is_maximized())
+        if (this._isExcluded(window) ||
+            window.is_fullscreen() || window.is_maximized())
             return null;
 
         const restorePosition = this._settings.get_boolean("restore-position");
@@ -394,7 +420,8 @@ export default class WindowControlExtension extends Extension {
     }
 
     _saveWindow(window) {
-        if (window.is_fullscreen() || window.is_maximized())
+        if (this._isExcluded(window) ||
+            window.is_fullscreen() || window.is_maximized())
             return;
 
         const key = this._windowKey(window);
