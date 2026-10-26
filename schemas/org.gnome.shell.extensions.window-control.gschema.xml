@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+    <schema id="org.gnome.shell.extensions.window-control"
+            path="/org/gnome/shell/extensions/window-control/">
+        <key name="window-states" type="s">
+            <default>'{}'</default>
+            <summary>Saved window positions and sizes</summary>
+        </key>
+    </schema>
+</schemalist>

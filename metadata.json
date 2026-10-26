@@ -1,0 +1,8 @@
+{
+    "uuid": "window-control@local",
+    "name": "Window Control",
+    "description": "Запам'ятовує розмір і розташування вікон на моніторах.",
+    "shell-version": ["50"],
+    "settings-schema": "org.gnome.shell.extensions.window-control",
+    "version": 1
+}
