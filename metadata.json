@@ -1,8 +1,8 @@
 {
-    "uuid": "window-control@local",
-    "name": "Window Control",
-    "description": "Запам'ятовує розмір і розташування вікон на моніторах.",
+    "uuid": "window-manager@local",
+    "name": "Window Manager",
+    "description": "Керує розміром, розташуванням і кнопками вікон та перемиканням між ними.",
     "shell-version": ["50"],
-    "settings-schema": "org.gnome.shell.extensions.window-control",
+    "settings-schema": "org.gnome.shell.extensions.window-manager",
     "version": 1
 }
