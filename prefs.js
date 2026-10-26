@@ -1,8 +1,7 @@
 import Adw from "gi://Adw";
 import Gio from "gi://Gio";
 import Gtk from "gi://Gtk";
-import { ExtensionPreferences } from
-    "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
+import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
 
 const BUTTON_EXPORT_KEYS = [
     "show-minimize",
@@ -13,7 +12,9 @@ const BUTTON_EXPORT_KEYS = [
 
 export default class WindowControlPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
-        const settings = this.getSettings();
+        const settings = this._getSettingsAtPath(
+            "/org/gnome/shell/extensions/window-manager/",
+        );
         const page = new Adw.PreferencesPage({
             title: "Позиція та розмір",
         });
@@ -59,20 +60,18 @@ export default class WindowControlPreferences extends ExtensionPreferences {
         exceptionsGroup.add(addExceptionRow);
 
         const updateExceptionRows = () => {
-            for (const row of exceptionRows)
-                exceptionsGroup.remove(row);
+            for (const row of exceptionRows) exceptionsGroup.remove(row);
             exceptionRows.length = 0;
 
             const applications = Gio.AppInfo.get_all();
             const excludedApps = settings.get_strv("excluded-apps");
             for (const appId of excludedApps) {
-                const app = applications.find(candidate =>
-                    candidate.get_id() === appId);
+                const app = applications.find(
+                    (candidate) => candidate.get_id() === appId,
+                );
                 const row = new Adw.ActionRow({
                     title: app?.get_display_name() ?? appId,
-                    subtitle: app?.get_display_name() === appId
-                        ? null
-                        : appId,
+                    subtitle: app?.get_display_name() === appId ? null : appId,
                 });
                 const removeButton = new Gtk.Button({
                     label: "-",
@@ -83,8 +82,9 @@ export default class WindowControlPreferences extends ExtensionPreferences {
                 removeButton.connect("clicked", () => {
                     settings.set_strv(
                         "excluded-apps",
-                        settings.get_strv("excluded-apps")
-                            .filter(id => id !== appId),
+                        settings
+                            .get_strv("excluded-apps")
+                            .filter((id) => id !== appId),
                     );
                 });
                 row.add_suffix(removeButton);
@@ -102,15 +102,41 @@ export default class WindowControlPreferences extends ExtensionPreferences {
         page.add(exceptionsGroup);
         window.add(page);
 
-        const buttonSettings = this.getSettings(
-            "org.gnome.shell.extensions.window-buttons-control",
+        const buttonSettings = this._getSettingsAtPath(
+            "/org/gnome/shell/extensions/window-buttons-control/",
         );
         window.add(this._buildButtonsPage(window, buttonSettings));
 
-        const switcherSettings = this.getSettings(
-            "org.gnome.shell.extensions.window-switcher",
+        const switcherSettings = this._getSettingsAtPath(
+            "/org/gnome/shell/extensions/window-switcher/",
         );
         window.add(this._buildSwitcherPage(switcherSettings));
+    }
+
+    _getSettingsAtPath(path) {
+        if (!this._settingsSchemaSource) {
+            this._settingsSchemaSource =
+                Gio.SettingsSchemaSource.new_from_directory(
+                    this.dir.get_child("schemas").get_path(),
+                    Gio.SettingsSchemaSource.get_default(),
+                    false,
+                );
+
+            this._settingsSchema = this._settingsSchemaSource.lookup(
+                "org.gnome.shell.extensions.window-manager",
+                false,
+            );
+        }
+
+        if (!this._settingsSchema)
+            throw new Error(
+                "Window Manager: combined settings schema not found.",
+            );
+
+        return new Gio.Settings({
+            settings_schema: this._settingsSchema,
+            path,
+        });
     }
 
     _buildButtonsPage(window, settings) {
@@ -154,12 +180,10 @@ export default class WindowControlPreferences extends ExtensionPreferences {
         positionBox.append(leftButton);
         positionBox.append(rightButton);
 
-        const setPosition = position => {
+        const setPosition = (position) => {
             const isLeft = position === "left";
-            if (leftButton.active !== isLeft)
-                leftButton.set_active(isLeft);
-            if (rightButton.active !== !isLeft)
-                rightButton.set_active(!isLeft);
+            if (leftButton.active !== isLeft) leftButton.set_active(isLeft);
+            if (rightButton.active !== !isLeft) rightButton.set_active(!isLeft);
         };
         leftButton.connect("toggled", () => {
             if (leftButton.active)
@@ -192,18 +216,24 @@ export default class WindowControlPreferences extends ExtensionPreferences {
             label: "Імпорт",
             valign: Gtk.Align.CENTER,
         });
-        importButton.connect("clicked", () => this._onButtonImport(window, settings));
+        importButton.connect("clicked", () =>
+            this._onButtonImport(window, settings),
+        );
         const exportButton = new Gtk.Button({
             label: "Експорт",
             valign: Gtk.Align.CENTER,
         });
-        exportButton.connect("clicked", () => this._onButtonExport(window, settings));
+        exportButton.connect("clicked", () =>
+            this._onButtonExport(window, settings),
+        );
         const resetButton = new Gtk.Button({
             label: "Скинути",
             valign: Gtk.Align.CENTER,
             css_classes: ["destructive-action"],
         });
-        resetButton.connect("clicked", () => this._onButtonReset(window, settings));
+        resetButton.connect("clicked", () =>
+            this._onButtonReset(window, settings),
+        );
         buttonsBox.append(importButton);
         buttonsBox.append(exportButton);
         buttonsBox.append(resetButton);
@@ -255,7 +285,15 @@ export default class WindowControlPreferences extends ExtensionPreferences {
         return page;
     }
 
-    _addSwitcherSliderRow(target, settings, key, title, lower, upper, stepIncrement) {
+    _addSwitcherSliderRow(
+        target,
+        settings,
+        key,
+        title,
+        lower,
+        upper,
+        stepIncrement,
+    ) {
         const row = new Adw.ActionRow({ title });
         const button = new Gtk.Button({
             label: settings.get_int(key).toString(),
@@ -336,24 +374,34 @@ export default class WindowControlPreferences extends ExtensionPreferences {
             try {
                 const file = source.open_finish(result);
                 const [ok, contents] = file.load_contents(null);
-                if (!ok)
-                    return;
+                if (!ok) return;
                 const data = JSON.parse(
                     new TextDecoder("utf-8").decode(contents),
                 );
                 if (typeof data["show-minimize"] === "boolean")
-                    settings.set_boolean("show-minimize", data["show-minimize"]);
+                    settings.set_boolean(
+                        "show-minimize",
+                        data["show-minimize"],
+                    );
                 if (typeof data["show-maximize"] === "boolean")
-                    settings.set_boolean("show-maximize", data["show-maximize"]);
+                    settings.set_boolean(
+                        "show-maximize",
+                        data["show-maximize"],
+                    );
                 if (typeof data["show-close"] === "boolean")
                     settings.set_boolean("show-close", data["show-close"]);
                 if (
                     data["button-position"] === "left" ||
                     data["button-position"] === "right"
                 )
-                    settings.set_string("button-position", data["button-position"]);
+                    settings.set_string(
+                        "button-position",
+                        data["button-position"],
+                    );
             } catch (error) {
-                if (!error.matches(Gtk.DialogError, Gtk.DialogError.DISMISSED)) {
+                if (
+                    !error.matches(Gtk.DialogError, Gtk.DialogError.DISMISSED)
+                ) {
                     logError(error, "Не вдалося імпортувати налаштування");
                     this._showButtonError(
                         window,
@@ -367,7 +415,8 @@ export default class WindowControlPreferences extends ExtensionPreferences {
     _onButtonReset(window, settings) {
         const dialog = new Adw.AlertDialog({
             heading: "Скинути налаштування?",
-            body: "Усі кнопки керування вікном та їх розташування повернуться " +
+            body:
+                "Усі кнопки керування вікном та їх розташування повернуться " +
                 "до значень за замовчуванням.",
         });
         dialog.add_response("cancel", "Скасувати");
@@ -380,8 +429,7 @@ export default class WindowControlPreferences extends ExtensionPreferences {
         dialog.set_close_response("cancel");
         dialog.connect("response", (_dialog, response) => {
             if (response === "reset") {
-                for (const key of BUTTON_EXPORT_KEYS)
-                    settings.reset(key);
+                for (const key of BUTTON_EXPORT_KEYS) settings.reset(key);
             }
         });
         dialog.present(window);
@@ -414,9 +462,10 @@ export default class WindowControlPreferences extends ExtensionPreferences {
         });
         const appRows = new Map();
         const applications = Gio.AppInfo.get_all()
-            .filter(app => app.get_id() && app.should_show())
-            .sort((left, right) => left.get_display_name()
-                .localeCompare(right.get_display_name()));
+            .filter((app) => app.get_id() && app.should_show())
+            .sort((left, right) =>
+                left.get_display_name().localeCompare(right.get_display_name()),
+            );
 
         for (const app of applications) {
             const row = new Gtk.ListBoxRow();
@@ -429,29 +478,37 @@ export default class WindowControlPreferences extends ExtensionPreferences {
             });
             const icon = app.get_icon();
             if (icon) {
-                appBox.append(new Gtk.Image({
-                    gicon: icon,
-                    pixel_size: 24,
-                }));
+                appBox.append(
+                    new Gtk.Image({
+                        gicon: icon,
+                        pixel_size: 24,
+                    }),
+                );
             }
-            appBox.append(new Gtk.Label({
-                label: app.get_display_name(),
-                xalign: 0,
-                hexpand: true,
-            }));
+            appBox.append(
+                new Gtk.Label({
+                    label: app.get_display_name(),
+                    xalign: 0,
+                    hexpand: true,
+                }),
+            );
             row.set_child(appBox);
             listBox.append(row);
             appRows.set(row, app);
         }
 
-        listBox.set_filter_func(row => {
+        listBox.set_filter_func((row) => {
             const app = appRows.get(row);
             const query = searchEntry.text.trim().toLocaleLowerCase();
-            return !query ||
+            return (
+                !query ||
                 app.get_display_name().toLocaleLowerCase().includes(query) ||
-                app.get_id().toLocaleLowerCase().includes(query);
+                app.get_id().toLocaleLowerCase().includes(query)
+            );
         });
-        searchEntry.connect("search-changed", () => listBox.invalidate_filter());
+        searchEntry.connect("search-changed", () =>
+            listBox.invalidate_filter(),
+        );
 
         const scrolledWindow = new Gtk.ScrolledWindow({
             hexpand: true,

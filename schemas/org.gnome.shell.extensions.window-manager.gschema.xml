@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-    <schema id="org.gnome.shell.extensions.window-manager"
-            path="/org/gnome/shell/extensions/window-manager/">
+    <schema id="org.gnome.shell.extensions.window-manager">
         <key name="window-states" type="s">
             <default>'{}'</default>
             <summary>Saved window positions and sizes</summary>
@@ -18,10 +17,7 @@
             <default>[]</default>
             <summary>Applications excluded from window state tracking</summary>
         </key>
-    </schema>
 
-    <schema id="org.gnome.shell.extensions.window-buttons-control"
-            path="/org/gnome/shell/extensions/window-buttons-control/">
         <key name="show-minimize" type="b">
             <default>true</default>
             <summary>Показувати кнопку "Згорнути"</summary>
@@ -36,8 +32,8 @@
         </key>
         <key name="button-position" type="s">
             <choices>
-                <choice value="left"/>
-                <choice value="right"/>
+                <choice value="left" />
+                <choice value="right" />
             </choices>
             <default>"right"</default>
             <summary>Розташування кнопок керування вікном</summary>
@@ -50,10 +46,7 @@
             <default>false</default>
             <summary>Чи було збережено початкове значення button-layout</summary>
         </key>
-    </schema>
 
-    <schema id="org.gnome.shell.extensions.window-switcher"
-            path="/org/gnome/shell/extensions/window-switcher/">
         <key name="height" type="i">
             <default>2</default>
             <summary>Height of the scroll area</summary>
